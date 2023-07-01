@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/mainpage.css') }}">
+
+    <title>Expense Tracker App {{ user }}</title>
+<!--    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>-->
+<!--    <script type="text/javascript">-->
+<!--        // Fetch data from the server-->
+<!--        usernamefec-->
+<!--        fetch('/data?user=' + )-->
+<!--            .then(response => response.json())-->
+<!--            .then(data => drawChart(data));-->
+
+<!--        // Draw the chart using the data-->
+<!--        function drawChart(data) {-->
+<!--            google.charts.load('current', {'packages': ['corechart']});-->
+<!--            google.charts.setOnLoadCallback(() => {-->
+<!--                var chartData = new google.visualization.DataTable();-->
+<!--                chartData.addColumn('string', 'Category');-->
+<!--                chartData.addColumn('number', 'Amount');-->
+
+<!--                data.forEach(entry => {-->
+<!--                    chartData.addRow([entry[0], parseFloat(entry[1])]);-->
+<!--                });-->
+
+<!--                var options = {-->
+<!--                    title: 'Expense Categories',-->
+<!--                    pieHole: 0.4-->
+<!--                };-->
+
+<!--                var chart = new google.visualization.PieChart(document.getElementById('chart-container'));-->
+<!--                chart.draw(chartData, options);-->
+<!--            });-->
+<!--        }-->
+<!--    </script>-->
+
+    </head>
+<body>
+
+    <h1>Expense Tracker App for {{ user }}</h1>
+    <div class="input-section">
+        {% if error_message %}
+            <p style="color:red;text-align:right;padding-right: 250px" >Error: {{error_message}}</p>
+        {% endif %}
+        <form method="POST" action="/add">
+        <label for="category-select">Category:</label>
+        <select id="category-select" name="category">
+            <option value="Food & Beverage" name="food">Food & Beverage</option>
+            <option value="Rent" name="rent">Rent</option>
+            <option value="Transport" name="transport">Transport</option>
+            <option value="Relaxing" name="relax">Relaxing</option>
+            <option value="books" name="books">Books and stationaries</option>
+            <option value="entertainment" name="entertainment">Life and Entertainment</option>
+            <option value="investments" name="investments">Investments</option>
+        </select>
+<!--          <p>Category <input type="text" name="category"></p>-->
+        <label for="amount-input">Amount:</label>
+        <input type="number" id="amount-input" name="price" required>
+        <label for="user-name">Name: </label>
+        <input type="text" name="name"  value = "{{ user }}"id="user-name" readonly>
+        <label for="date-input">Date:</label>
+        <input type="date" id="date-input" name="date" value= required>
+<!--        <button id="add-btn">Add</button>-->
+        <input type="submit" id="add-btn" value="Add">
+        </form>
+    </div>
+    <div class="expenses-list">
+        <h2>Expenses List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody id="expnese-table-body">
+               {% for row in expense %}
+                <tr>
+                    <td id = "category">{{row[0]}}</td>
+                    <td id = "price">{{row[2]}}</td>
+                    <td>{{row[1]}}</td>
+                    <form method="POST" action="/delete">
+                        <input type="hidden" name="username" value="{{ user }}">
+                        <input type="hidden" name="categorydel" value="{{row[0]}}">
+                        <input type="hidden" name="pricedel" value="{{row[2]}}">
+                        <input type="hidden" name="datedel" value="{{row[1]}}">
+                        <td><input type="submit" id="delete-btn" value="Delete" name="delete" formmethod="POST"></td>
+                    </form>
+
+                </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>Total:</td>
+                    <td id="total-amount" name="total-amount">{{column_sum}}</td>
+                    <td> </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+
+    </div>
+<div class="pagination" style="text-align: center">
+
+    {% if current_page > 1 %}
+      <a href="?user={{user}}&page={{ current_page - 1 }}">Previous</a>
+    {% endif %}
+
+    {% for page_num in range(1, total_pages + 1) %}
+      {% if current_page == page_num %}
+        <span class="current-page">{{ page_num }}</span>
+      {% else %}
+        <a href="?user={{user}}&page={{ page_num }}">{{ page_num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if current_page < total_pages %}
+      <a href="?user={{user}}&page={{ current_page + 1 }}">Next</a>
+    {% endif %}
+  </div>
+<!--    <script src="script.js"></script>-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+    var expensesData = {{ expenses|tojson }};
+    renderDonutChart(expensesData);
+
+    function deleteExpense(expenseId) {
+        if (confirm("Are you sure you want to delete this expense?")) {
+            fetch('/delete/' + expenseId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to delete expense.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    }
+
+    function editExpense(expenseId, details, amount) {
+        document.getElementById('edit-expense-id').value = expenseId;
+        document.getElementById('edit-details').value = details;
+        document.getElementById('edit-amount').value = amount;
+        document.getElementById('edit-form-container').style.display = 'block';
+    }
+
+    function cancelEdit() {
+        document.getElementById('edit-form-container').style.display = 'none';
+    }
+</script>
+</body>
+</html>
